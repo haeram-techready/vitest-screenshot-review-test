@@ -1,0 +1,49 @@
+# Scratch test: which image URLs render in a job summary and a PR comment.
+name: Experiment images
+
+on:
+  push:
+    branches: [exp-images]
+
+permissions: {}
+
+jobs:
+  images:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: src/components/__screenshots__/alert.test.js/alert-1-chromium-linux.png
+          archive: false
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+        run: |
+          file=src/components/__screenshots__/alert.test.js/alert-1-chromium-linux.png
+          raw="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_SHA/$file"
+          blob="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/raw/$GITHUB_SHA/$file"
+          data="data:image/png;base64,$(base64 -w0 "$file")"
+          echo "artifact url: $ARTIFACT_URL"
+          curl -s -o /dev/null -w 'artifact url without auth: %{http_code} %{redirect_url}\n' "$ARTIFACT_URL"
+          curl -s -o /dev/null -w 'artifact zip API without auth: %{http_code}\n' "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip"
+          {
+            echo "### A raw.githubusercontent.com"
+            echo "![A]($raw)"
+            echo "### B github.com raw"
+            echo "![B]($blob)"
+            echo "### C data URI"
+            echo "<img alt=\"C\" src=\"$data\">"
+            echo "### D artifact URL"
+            echo "![D]($ARTIFACT_URL)"
+          } >"$RUNNER_TEMP/body.md"
+          cat "$RUNNER_TEMP/body.md" >>"$GITHUB_STEP_SUMMARY"
+          gh pr comment 5 --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/body.md"
