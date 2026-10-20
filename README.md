@@ -18,3 +18,5 @@ A local run writes and compares references for its own platform, which git ignor
 - To approve the changes, a maintainer submits a review whose body starts with `/update-screenshots`. `.github/workflows/update-screenshots.yml` then commits the new references to the branch.
 - The same workflow also runs by hand on a branch: `gh workflow run update-screenshots.yml --ref <branch>`.
 - GitHub holds CI for the bot commit. Click **Approve workflows to run** in the merge box.
+
+The first pull request on this repo has no Linux reference yet, so CI only shows a notice.
