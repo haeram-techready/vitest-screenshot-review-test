@@ -1,6 +1,6 @@
 .alert {
   width: 240px;
-  padding: 20px;
+  padding: 12px;
   border-left: 4px solid var(--danger);
   border-radius: 4px;
   background: var(--surface-muted);
