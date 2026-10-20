@@ -39,7 +39,8 @@ jobs:
           --reporter=json --outputFile.json="$RUNNER_TEMP/vitest-report.json"
 
       # The steps below report the screenshot result on the pull request. Bootstrap mode compared
-      # nothing, so it skips them.
+      # nothing, so it skips them. Each `if` needs `!cancelled()`: without a status check GitHub
+      # adds `success()`, which skips the step after the tests fail.
       - id: screenshots
         if: >-
           !cancelled() && steps.bootstrap.outputs.bootstrap == 'false'
@@ -50,13 +51,13 @@ jobs:
             echo "count=$count" >>"$GITHUB_OUTPUT"
           fi
       - id: upload
-        if: steps.screenshots.outputs.count > 0
+        if: "!cancelled() && steps.screenshots.outputs.count > 0"
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: screenshot-diffs
           path: ${{ runner.temp }}/screenshot-diffs
           if-no-files-found: ignore
-      - if: steps.screenshots.outputs.count != ''
+      - if: "!cancelled() && steps.screenshots.outputs.count != ''"
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
@@ -67,7 +68,7 @@ jobs:
       # One comment per pull request, found by its marker. A fork's token cannot comment, so a
       # fork pull request gets the job summary only.
       - if: >-
-          steps.screenshots.outputs.count != ''
+          !cancelled() && steps.screenshots.outputs.count != ''
           && (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository)
         env:
           GH_TOKEN: ${{ github.token }}
