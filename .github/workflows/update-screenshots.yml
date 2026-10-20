@@ -12,8 +12,12 @@
 # The job that runs the branch's code (`update`) gets a read-only token. The jobs that write
 # (`commit`, `report`) run none of it: `commit` takes only PNG files from the `update` artifact.
 #
-# GitHub holds the pull_request run that a GITHUB_TOKEN push creates until a person with write
-# access clicks "Approve workflows to run", so the report comment asks for that click.
+# `commit` pushes with a token of the GitHub App in vars.SCREENSHOT_APP_CLIENT_ID (contents: write,
+# this repository only). GitHub holds the pull_request run that a GITHUB_TOKEN push creates until
+# a person approves it. A push with an App token starts CI as normal.
+#
+# Both triggers run this file from the pull request, so a pull request that edits it can read the
+# App key in the `commit` job.
 name: Update screenshots
 
 on:
@@ -117,7 +121,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
-      contents: write # push the commit
+      contents: read
     outputs:
       sha: ${{ steps.commit.outputs.sha }}
     env:
@@ -131,9 +135,18 @@ jobs:
         with:
           name: screenshots
           path: ${{ runner.temp }}/screenshots
+      - id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.SCREENSHOT_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SCREENSHOT_APP_PRIVATE_KEY }}
+          permission-contents: write
       # The artifact came from a job that ran branch code. Take only regular PNG files at
       # reference paths.
       - id: commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
         run: |
           cd "$RUNNER_TEMP/screenshots"
           files=()
@@ -155,13 +168,15 @@ jobs:
             echo "No reference changed."
             exit 0
           fi
-          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+          bot="${APP_SLUG}[bot]"
+          bot_id=$(gh api "users/$bot" --jq .id)
+          git -c user.name="$bot" -c user.email="$bot_id+$bot@users.noreply.github.com" \
             commit -m "Update Linux screenshot references" -m "Requested by @$GITHUB_ACTOR ($GITHUB_EVENT_NAME)."
           echo "sha=$(git rev-parse HEAD)" >>"$GITHUB_OUTPUT"
       # Not a force push: it fails if someone pushed to the branch after `prepare` read it.
       - if: steps.commit.outputs.sha != ''
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
           git -c "http.$GITHUB_SERVER_URL/.extraheader=AUTHORIZATION: basic $auth" push origin "HEAD:refs/heads/$BRANCH"
@@ -198,7 +213,7 @@ jobs:
           elif [ -z "$COMMIT_SHA" ]; then
             message="The new screenshots match the files on \`$BRANCH\`, so there is nothing to commit. [Run]($run_url)"
           else
-            message="Committed $COUNT screenshot reference(s) to \`$BRANCH\` in $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$COMMIT_SHA. GitHub holds CI for a bot commit: click **Approve workflows to run** in the merge box to run the checks. [Run]($run_url)"
+            message="Committed $COUNT screenshot reference(s) to \`$BRANCH\` in $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$COMMIT_SHA. CI runs again on that commit. [Run]($run_url)"
           fi
           echo "$message" >>"$GITHUB_STEP_SUMMARY"
           pr=$PR_NUMBER
