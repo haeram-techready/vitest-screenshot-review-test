@@ -3,7 +3,7 @@
   padding: 16px;
   border: 1px solid var(--border);
   border-top: 4px solid var(--accent);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
 }
 
