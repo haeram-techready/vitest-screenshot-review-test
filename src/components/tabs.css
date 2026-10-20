@@ -1,0 +1,14 @@
+.tabs {
+  display: inline-flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  padding: 8px 12px;
+  color: var(--text-muted);
+}
+
+.tab[aria-selected="true"] {
+  border-bottom: 2px solid var(--accent);
+  color: var(--text);
+}

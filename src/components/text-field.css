@@ -1,0 +1,19 @@
+.text-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 200px;
+}
+
+.text-field-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.text-field-input {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-bottom: 2px solid var(--accent);
+  border-radius: 4px;
+  font: var(--font);
+}
