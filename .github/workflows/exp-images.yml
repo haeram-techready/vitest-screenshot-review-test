@@ -36,14 +36,13 @@ jobs:
           curl -s -o /dev/null -w 'artifact url without auth: %{http_code} %{redirect_url}\n' "$ARTIFACT_URL"
           curl -s -o /dev/null -w 'artifact zip API without auth: %{http_code}\n' "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip"
           {
-            echo "### A raw.githubusercontent.com"
-            echo "![A]($raw)"
-            echo "### B github.com raw"
-            echo "![B]($blob)"
-            echo "### C data URI"
-            echo "<img alt=\"C\" src=\"$data\">"
-            echo "### D artifact URL"
+            echo "### D artifact URL, markdown"
+            echo
             echo "![D]($ARTIFACT_URL)"
+            echo
+            echo "### E artifact URL, img tag"
+            echo
+            echo "<img alt=\"E\" src=\"$ARTIFACT_URL\">"
           } >"$RUNNER_TEMP/body.md"
           cat "$RUNNER_TEMP/body.md" >>"$GITHUB_STEP_SUMMARY"
           gh pr comment 5 --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/body.md"
